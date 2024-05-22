@@ -1,2 +1,2 @@
 # sicp
-sicp exercises and source code
+Source code and exercises from "Structure and Interpretation of Computer Programs" 
