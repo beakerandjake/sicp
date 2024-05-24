@@ -55,7 +55,6 @@
 ; Agenda
 ; ================================================
 
-
 ; returns a new time segment
 (define (make-time-segment time queue)
   (cons time queue))
@@ -154,8 +153,7 @@
       (begin ((car procedures))
              (call-each (cdr procedures))))))
 
-
-; returns a new wire
+; calls each procedure in a list of no-argument procedures
 (define (make-wire)
   (let ((signal-value 0) (action-procedures '()))
     (define (set-my-signal! new-value)
@@ -171,7 +169,7 @@
       (cond ((eq? m 'get-signal) signal-value)
             ((eq? m 'set-signal!) set-my-signal!)
             ((eq? m 'add-action!) accept-action-procedure!)
-            (else (error "Unknown operator: WIRE" m))))
+            (else (error "Unknown operation: WIRE" m))))
     dispatch))
 
 ; returns the signal of the wire.
@@ -188,7 +186,7 @@
 
 ; adds to the main agenda
 (define (after-delay delay action)
-  (add-to-agenda (+ delay (current-time the-agenda))
+  (add-to-agenda! (+ delay (current-time the-agenda))
                  action
                  the-agenda))
 
@@ -203,7 +201,7 @@
     (let ((first-item (first-agenda-item the-agenda)))
       (first-item)
       (remove-first-agenda-item! the-agenda)
-      (propagate agenda))))
+      (propagate))))
 
 ; ================================================
 ; Primitive digital logic functions
@@ -254,11 +252,22 @@
             (logical-or (get-signal a1) (get-signal a2))))
       (after-delay or-gate-delay
                    (lambda () (set-signal! output new-value)))))
-  (add-action! a1 and-action-procedure)
-  (add-action! a2 and-action-procedure)
+  (add-action! a1 or-action-procedure)
+  (add-action! a2 or-action-procedure)
   'ok)
 
 ; returns a new half adder 
+;                       ______
+; A ---------0---------|      |                  _____  
+;       ,----|---------|  or  |-----------------|     |---- S
+;       |    |         |______|    _____     ,--| and |
+;       |    |                    |     |    |  |_____|
+;       |	   |                  ,_| inv |----`
+;       |	   |	  _____         | |_____|
+;       |    `---|     |        |  
+; B ----0--------| and |--------0-------------------------- C
+;                |_____|
+;
 (define (half-adder a b s c)
   (let ((d (make-wire)) (e (make-wire)))
     (or-gate a b d)
@@ -285,4 +294,37 @@
     (half-adder a s sum c2)
     (or-age c1 c2 c-out)
     'ok))
+
+; ================================================
+; Sample Simulation
+; ================================================
+
+; attaches a probe on the wire which shows the simulator in action
+(define (probe name wire)
+  (add-action! wire
+               (lambda ()
+                 (newline)
+                 (display name) (display " ")
+                 (display (current-time the-agenda))
+                 (display " New-value = ")
+                 (display (get-signal wire)))))
+
+(define the-agenda (make-agenda))
+(define inverter-delay 2)
+(define and-gate-delay 3)
+(define or-gate-delay 5)
+
+(define input-1 (make-wire))
+(define input-2 (make-wire))
+(define sum (make-wire))
+(define carry (make-wire))
+
+(probe 'sum sum)
+(probe 'carry carry)
+
+(half-adder input-1 input-2 sum carry)
+(set-signal! input-1 1)
+(propagate)
+(set-signal! input-2 1)
+(propagate)
 
